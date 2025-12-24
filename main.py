@@ -116,28 +116,47 @@ st.markdown("---")
 tab1, tab2, tab3 = st.tabs(["📉 EC와 생육량", "☁️ 환경 복합 요인", "🧪 요인별 상관관계"])
 
 # Tab 1: EC 수준에 따른 생육량 변화
+# --- Tab 1 수정 부분 ---
 with tab1:
     st.subheader("EC(전기전도도) 수준별 평균 생육 지표 변화")
     col1, col2 = st.columns([3, 1])
     
-    with col1:
-        # EC 기준 정렬
-        plot_df = summary_df.sort_values('EC')
-        fig1 = go.Figure()
-        fig1.add_trace(go.Scatter(x=plot_df['EC'], y=plot_df['생중량(g)'], name='평균 생중량(g)', line=dict(color='green', width=4), mode='lines+markers'))
-        fig1.add_trace(go.Scatter(x=plot_df['EC'], y=plot_df['지상부 길이(mm)'], name='지상부 길이(mm)', line=dict(dash='dash')))
-        
-        # 최적값(하늘고) 강조
-        fig1.add_annotation(x=2.0, y=plot_df[plot_df['EC']==2.0]['생중량(g)'].values[0],
-                            text="최적 EC (2.0)", showarrow=True, arrowhead=1, color="red")
-        
-        fig1.update_layout(title="EC 농도에 따른 생육 지표 변화", xaxis_title="EC (dS/m)", yaxis_title="측정치",
-                          font=dict(family="Malgun Gothic, sans-serif"))
-        st.plotly_chart(fig1, use_container_width=True)
-        
-    with col2:
-        st.info("**분석 결과**\n\nEC 2.0(하늘고)에서 생중량이 가장 높게 나타나며, 이를 기준으로 EC가 멀어질수록 전반적인 생육량이 감소하는 경향을 보입니다.")
-
+    if not summary_df.empty:
+        with col1:
+            # EC 기준 정렬
+            plot_df = summary_df.sort_values('EC')
+            fig1 = go.Figure()
+            fig1.add_trace(go.Scatter(x=plot_df['EC'], y=plot_df['생중량(g)'], name='평균 생중량(g)', line=dict(color='green', width=4), mode='lines+markers'))
+            fig1.add_trace(go.Scatter(x=plot_df['EC'], y=plot_df['지상부 길이(mm)'], name='지상부 길이(mm)', line=dict(dash='dash')))
+            
+            # --- 에러 방지용 최적값 강조 로직 ---
+            # EC가 2.0인 데이터를 찾되, 부동소수점 오차를 고려하여 필터링
+            optimal_data = plot_df[abs(plot_df['EC'] - 2.0) < 0.01]
+            
+            if not optimal_data.empty:
+                y_val = optimal_data['생중량(g)'].values[0]
+                fig1.add_annotation(
+                    x=2.0, y=y_val,
+                    text="최적 EC (2.0)", 
+                    showarrow=True, 
+                    arrowhead=1, 
+                    color="red",
+                    ax=0, ay=-40  # 텍스트 위치 조정
+                )
+            
+            fig1.update_layout(
+                title="EC 농도에 따른 생육 지표 변화", 
+                xaxis_title="EC (dS/m)", 
+                yaxis_title="측정치",
+                font=dict(family="Malgun Gothic, sans-serif"),
+                hovermode="x unified"
+            )
+            st.plotly_chart(fig1, use_container_width=True)
+            
+        with col2:
+            st.info("**분석 결과**\n\nEC 2.0(하늘고)에서 생중량이 가장 높게 나타나며, 이를 기준으로 EC가 멀어질수록 전반적인 생육량이 감소하는 경향을 보입니다.")
+    else:
+        st.warning("분석할 생육 결과 데이터가 충분하지 않습니다.")
 # Tab 2: 다른 요인들의 영향 (습도 등)
 with tab2:
     st.subheader("EC 외 환경 요인이 생육에 미치는 영향")
