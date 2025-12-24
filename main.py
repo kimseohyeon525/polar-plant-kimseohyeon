@@ -117,46 +117,76 @@ tab1, tab2, tab3 = st.tabs(["📉 EC와 생육량", "☁️ 환경 복합 요인
 
 # Tab 1: EC 수준에 따른 생육량 변화
 # --- Tab 1 수정 부분 ---
+# --- Tab 1: EC 수준 변화에 따른 생육량 ---
 with tab1:
     st.subheader("EC(전기전도도) 수준별 평균 생육 지표 변화")
     col1, col2 = st.columns([3, 1])
     
-    if not summary_df.empty:
+    if summary_df is not None and not summary_df.empty:
         with col1:
-            # EC 기준 정렬
+            # 1. 데이터 정렬 (EC 기준)
             plot_df = summary_df.sort_values('EC')
+            
+            # 2. 그래프 생성
             fig1 = go.Figure()
-            fig1.add_trace(go.Scatter(x=plot_df['EC'], y=plot_df['생중량(g)'], name='평균 생중량(g)', line=dict(color='green', width=4), mode='lines+markers'))
-            fig1.add_trace(go.Scatter(x=plot_df['EC'], y=plot_df['지상부 길이(mm)'], name='지상부 길이(mm)', line=dict(dash='dash')))
             
-            # --- 에러 방지용 최적값 강조 로직 ---
-            # EC가 2.0인 데이터를 찾되, 부동소수점 오차를 고려하여 필터링
-            optimal_data = plot_df[abs(plot_df['EC'] - 2.0) < 0.01]
+            # 평균 생중량 선
+            fig1.add_trace(go.Scatter(
+                x=plot_df['EC'], 
+                y=plot_df['생중량(g)'], 
+                name='평균 생중량(g)', 
+                line=dict(color='green', width=4), 
+                mode='lines+markers'
+            ))
             
-            if not optimal_data.empty:
-                y_val = optimal_data['생중량(g)'].values[0]
-                fig1.add_annotation(
-                    x=2.0, y=y_val,
-                    text="최적 EC (2.0)", 
-                    showarrow=True, 
-                    arrowhead=1, 
-                    color="red",
-                    ax=0, ay=-40  # 텍스트 위치 조정
-                )
+            # 지상부 길이 선
+            fig1.add_trace(go.Scatter(
+                x=plot_df['EC'], 
+                y=plot_df['지상부 길이(mm)'], 
+                name='지상부 길이(mm)', 
+                line=dict(dash='dash', color='orange'),
+                mode='lines+markers'
+            ))
             
+            # 3. 최적값(EC 2.0) 어노테이션 추가 (에러 방지 강화)
+            try:
+                # 2.0에 가장 가까운 값을 찾거나 정확히 일치하는 행 선택
+                target_row = plot_df[abs(plot_df['EC'] - 2.0) < 0.1]
+                
+                if not target_row.empty:
+                    # 데이터가 있을 때만 어노테이션 추가
+                    best_y = target_row['생중량(g)'].values[0]
+                    fig1.add_annotation(
+                        x=2.0, 
+                        y=best_y,
+                        text="최적 EC (2.0)", 
+                        showarrow=True, 
+                        arrowhead=2, 
+                        ax=0, 
+                        ay=-40,
+                        font=dict(color="red", size=12),
+                        arrowcolor="red"
+                    )
+            except Exception:
+                # 에러 발생 시 어노테이션만 생략하고 그래프는 출력
+                pass
+            
+            # 4. 레이아웃 설정
             fig1.update_layout(
                 title="EC 농도에 따른 생육 지표 변화", 
                 xaxis_title="EC (dS/m)", 
                 yaxis_title="측정치",
                 font=dict(family="Malgun Gothic, sans-serif"),
-                hovermode="x unified"
+                hovermode="x unified",
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
             )
+            
             st.plotly_chart(fig1, use_container_width=True)
             
         with col2:
-            st.info("**분석 결과**\n\nEC 2.0(하늘고)에서 생중량이 가장 높게 나타나며, 이를 기준으로 EC가 멀어질수록 전반적인 생육량이 감소하는 경향을 보입니다.")
+            st.info("**분석 결과**\n\nEC 2.0(하늘고)에서 생중량이 가장 높게 나타나는 경향을 보입니다. 단, 다른 환경 요인에 따라 결과는 달라질 수 있습니다.")
     else:
-        st.warning("분석할 생육 결과 데이터가 충분하지 않습니다.")
+        st.error("📉 표시할 생육 요약 데이터가 없습니다. 파일의 시트 이름과 '학교' 컬럼을 확인해 주세요.")
 # Tab 2: 다른 요인들의 영향 (습도 등)
 with tab2:
     st.subheader("EC 외 환경 요인이 생육에 미치는 영향")
